@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kardex Farmacológico - Ficha Completa por Medicamento</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            color: #1f2937;
+        }
+        .ficha-header {
+            background-color: #3b82f6;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.75rem 0.75rem 0 0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .ficha-header:hover {
+            background-color: #2563eb;
+        }
+        .ficha-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-in-out;
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 0.75rem 0.75rem;
+        }
+        .ficha-content.open {
+            max-height: 2000px; /* Suficiente altura para expandir */
+        }
+        .campo-label {
+            font-weight: 600;
+            color: #1f2937;
+            background-color: #eef2ff; /* Azul muy claro para el fondo del label */
+            padding: 0.5rem 1rem;
+            border-right: 1px solid #e5e7eb;
+            width: 30%; /* Ancho fijo para las etiquetas */
+        }
+        .campo-valor {
+            padding: 0.5rem 1rem;
+            color: #4b5563;
+            width: 70%;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-700">📋 Fichas Farmacológicas: Formato Completo</h1>
+            <p class="mt-2 text-lg text-slate-600">Cada ficha se muestra en su formato detallado. Use los controles para filtrar la información y ver solo las fichas relevantes.</p>
+        </header>
+
+        <!-- Search, Filter, and UX Controls -->
+        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold text-slate-800 mb-4 border-b pb-2">🔎 Controles de Búsqueda y Filtrado</h2>
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <input type="text" id="searchInput" placeholder="Buscar por Nombre (Comercial o Genérico)..."
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                
+                <select id="groupFilter" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 md:w-1/4">
+                    <option value="all">Filtrar por Grupo Farmacológico</option>
+                    <!-- Opciones añadidas por JS -->
+                </select>
+                
+                <select id="routeFilter" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 md:w-1/4">
+                    <option value="all">Filtrar por Vía de Administración</option>
+                    <!-- Opciones añadidas por JS -->
+                </select>
+            </div>
+            <div class="flex justify-between items-center">
+                <button id="clearFiltersBtn" class="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-150">
+                    Limpiar Filtros
+                </button>
+                <p id="resultsCount" class="text-lg font-medium text-slate-700">Mostrando 80 resultados totales.</p>
+            </div>
+        </div>
+
+        <!-- Medication List -->
+        <div id="medicationList" class="space-y-4">
+            <!-- Fichas inyectadas por JS -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA GENERATION (80 FICHAS COMPLETAS) ---
+
+        const data = (() => {
+            const medicamentos = [];
+            const nombresGenericos = [
+                "Paracetamol", "Ibuprofeno", "Amoxicilina", "Omeprazol", "Losartán", 
+                "Metformina", "Atorvastatina", "Tramadol", "Amlodipino", "Ceftriaxona",
+                "Furosemida", "Clonazepam", "Heparina", "Insulina Glargina", "Levotiroxina", 
+                "Salbutamol", "Prednisona", "Metronidazol", "Diclofenaco", "Ranitidina"
+            ];
+            const nombresComerciales = [
+                "Tylenol", "Advil", "Amoxil", "Prilosec", "Cozaar", 
+                "Glucophage", "Lipitor", "Ultram", "Norvasc", "Rocephin",
+                "Lasix", "Klonopin", "Clexane", "Lantus", "Eutirox", 
+                "Ventolin", "Deltasone", "Flagyl", "Voltaren", "Zantac"
+            ];
+            const gruposFarmacologicos = [
+                "Analgésico/Antipirético", "AINE (Antiinflamatorio)", "Antibiótico Beta-Lactámico", 
+                "Inhibidor de Bomba de Protones", "Antagonista de Receptores de Angiotensina II", 
+                "Antidiabético Oral", "Estatina (Hipolipemiante)", "Analgésico Opioide", 
+                "Bloqueador de Canales de Calcio", "Cefalosporina de Tercera Generación",
+                "Diurético de Asa", "Benzodiacepina (Ansiolítico)", "Anticoagulante", 
+                "Insulina de Acción Prolongada", "Hormona Tiroidea", "Agonista Beta-2",
+                "Corticoesteroide", "Antiprotozoario", "AINE (Tópico/Oral)", "Bloqueador H2"
+            ];
+            const vias = ["Oral", "Intravenosa (IV)", "Intramuscular (IM)", "Subcutánea (SC)", "Inhalatoria"];
+            const presentaciones = [
+                "Tabletas (10 unidades)", "Cápsulas (30 unidades)", "Ampolla (1 g/10 ml)", 
+                "Frasco vial (50 mg)", "Solución Inyectable (20 mg)", "Jeringa Prellenada (40 mg)",
+                "Inhalador (100 mcg/pulsación)", "Supositorios (300 mg)"
+            ];
+            const mecanismos = [
+                "Inhibición de la síntesis de prostaglandinas en el SNC.", 
+                "Inhibición de la ciclooxigenasa (COX-1 y COX-2).",
+                "Inhibición de la síntesis de la pared celular bacteriana (transpeptidasas).",
+                "Bloqueo irreversible de la H+/K+-ATPasa en células parietales gástricas.",
+                "Bloqueo selectivo y competitivo de los receptores AT1 de la angiotensina II.",
+                "Reduce la producción hepática de glucosa (gluconeogénesis) y mejora la sensibilidad periférica a la insulina.",
+                "Inhibición competitiva de la enzima HMG-CoA reductasa, limitando la biosíntesis de colesterol.",
+                "Agonista débil de receptores opioides mu y también inhibe la recaptación de norepinefrina y serotonina.",
+                "Inhibe la entrada de iones de calcio a través de las membranas de las células musculares lisas vasculares y cardíacas.",
+                "Inhibición de la síntesis de peptidoglicano de la pared bacteriana, un efecto bactericida.",
+                "Bloquea el cotransportador Na+-K+-2Cl- en la rama ascendente gruesa del asa de Henle.",
+                "Potencia el efecto inhibidor del neurotransmisor GABA, aumentando la frecuencia de apertura de canales de cloruro.",
+                "Potencia la inhibición de la trombina y el factor Xa por la antitrombina III.",
+                "Análogo de insulina basal que proporciona un perfil de concentración relativamente constante y sin picos.",
+                "Reemplazo de la hormona tiroidea endógena (T4), actuando sobre los receptores nucleares.",
+                "Estimula selectivamente los receptores adrenérgicos beta-2 en el músculo liso bronquial, causando broncodilatación.",
+                "Se une a receptores de glucocorticoides intracelulares, modificando la transcripción genética para efectos antiinflamatorios e inmunosupresores.",
+                "Alteración del ADN y generación de radicales libres citotóxicos en organismos anaerobios y protozoos sensibles.",
+                "Inhibición potente y no selectiva de la síntesis de prostaglandinas por la inhibición de COX.",
+                "Bloqueo competitivo y reversible de los receptores H2 de la histamina en las células parietales gástricas."
+            ];
+            const indicaciones = [
+                ["Dolor leve a moderado", "Fiebre (Antipirético)"], 
+                ["Dolor, inflamación (articular y muscular)", "Artritis", "Dismenorrea"],
+                ["Infecciones respiratorias (neumonía, bronquitis)", "Otitis media", "Sinusitis"],
+                ["Enfermedad por Reflujo Gastroesofágico (ERGE)", "Úlcera péptica (gástrica y duodenal)", "Eradicación de H. pylori"],
+                ["Hipertensión arterial (HTA)", "Insuficiencia cardíaca", "Nefropatía diabética"],
+                ["Diabetes Mellitus tipo 2 (monoterapia o combinado)"],
+                ["Hipercolesterolemia primaria", "Prevención secundaria de eventos cardiovasculares"],
+                ["Dolor moderado a severo (agudo y crónico)"],
+                ["Hipertensión arterial", "Angina estable crónica", "Angina de Prinzmetal"],
+                ["Infecciones graves del tracto respiratorio, sepsis, meningitis"],
+                ["Edema asociado a insuficiencia cardíaca congestiva", "Hipertensión", "Insuficiencia renal"],
+                ["Trastorno de ansiedad", "Trastorno de pánico", "Epilepsia (tratamiento adjunto)"],
+                ["Profilaxis y tratamiento de la trombosis venosa profunda (TVP)", "Embolia pulmonar (EP)"],
+                ["Tratamiento de Diabetes Mellitus tipo 1 y 2 (Control basal o nocturno)"],
+                ["Hipotiroidismo de cualquier etiología", "Supresión de TSH en cáncer tiroideo"],
+                ["Asma (alivio de síntomas agudos)", "Enfermedad Pulmonar Obstructiva Crónica (EPOC)"],
+                ["Trastornos inflamatorios y autoinmunes (Lupus, Artritis Reumatoide)", "Alergias severas"],
+                ["Infecciones por protozoos (Amebiasis, Giardiasis)", "Infecciones bacterianas anaerobias"],
+                ["Dolor e inflamación articular, gota, esguinces", "Dolor postoperatorio"],
+                ["Úlcera duodenal y gástrica activa", "Síndrome de Zollinger-Ellison"]
+            ];
+            const posologias = [
+                "Adultos: 500 mg a 1 g cada 6-8 horas, Dosis máxima diaria: 4 g.", 
+                "Adultos: 200 a 400 mg cada 6-8 horas. Máximo: 1200 mg/día.",
+                "Adultos: 500 mg a 1 g cada 8 horas, por 7 a 14 días.",
+                "ERGE: 20 mg una vez al día. Úlcera: 40 mg una vez al día.",
+                "Iniciar con 50 mg una vez al día. Rango de mantenimiento: 25 a 100 mg/día.",
+                "Iniciar con 500 mg dos veces al día con las comidas. Dosis máxima: 2550 mg/día.",
+                "Dosis inicial: 10 mg o 20 mg. Rango de dosis: 10 mg a 80 mg una vez al día.",
+                "50 mg a 100 mg cada 4-6 horas según necesidad. Dosis máxima: 400 mg/día.",
+                "5 mg una vez al día. Se puede aumentar a un máximo de 10 mg/día.",
+                "Adultos: 1 a 2 g una vez al día (IV o IM) según la gravedad de la infección.",
+                "Inicialmente 20-40 mg oral. Ajustar según la respuesta diurética.",
+                "0.5 mg a 2 mg al acostarse para la ansiedad o pánico. Ajustar individualmente.",
+                "Profilaxis: 40 mg SC una vez al día. Tratamiento: 1 mg/kg SC cada 12 horas.",
+                "Dosis individualizada SC, usualmente una vez al día, independientemente de las comidas.",
+                "Dosis inicial: 1.6 mcg/kg/día. Ajustar la dosis en incrementos de 12.5 mcg.",
+                "2 inhalaciones (200 mcg) cada 4 a 6 horas PRN (según necesidad) para broncoespasmo.",
+                "Dosis muy variable, desde 5 mg hasta 60 mg/día, según la condición a tratar.",
+                "500 mg por vía oral cada 8 horas, por 7 a 10 días.",
+                "50 a 100 mg dos o tres veces al día con comida. Vía tópica: aplicar 3-4 veces al día.",
+                "150 mg dos veces al día o 300 mg al acostarse."
+            ];
+
+            for (let i = 0; i < 80; i++) {
+                const index = i % 20;
+                const presentationIndex = i % presentaciones.length;
+                const posologiaIndex = i % posologias.length;
+                const viaIndex = i % vias.length;
+
+                medicamentos.push({
+                    id: i + 1,
+                    nombreComercial: nombresComerciales[index] + (i < 20 ? "" : (i < 40 ? " Forte" : (i < 60 ? " XR" : " Plus"))),
+                    nombreGenerico: nombresGenericos[index],
+                    mecanismoAccion: mecanismos[index],
+                    presentacion: presentaciones[presentationIndex],
+                    indicadores: indicaciones[index],
+                    viaAdministracion: vias[viaIndex],
+                    grupoFarmacologico: gruposFarmacologicos[index],
+                    posologia: posologias[posologiaIndex]
+                });
+            }
+            return medicamentos;
+        })();
+
+        // --- STATE MANAGEMENT ---
+        
+        const state = {
+            data: data,
+            filters: {
+                search: "",
+                group: "all",
+                route: "all"
+            }
+        };
+
+        // --- SELECTORS ---
+        const medicationList = document.getElementById('medicationList');
+        const searchInput = document.getElementById('searchInput');
+        const groupFilter = document.getElementById('groupFilter');
+        const routeFilter = document.getElementById('routeFilter');
+        const resultsCountEl = document.getElementById('resultsCount');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
+        // --- FILTERING AND RENDERING LOGIC ---
+
+        function getFilteredData() {
+            return state.data.filter(med => {
+                const matchSearch = med.nombreComercial.toLowerCase().includes(state.filters.search.toLowerCase()) || 
+                                    med.nombreGenerico.toLowerCase().includes(state.filters.search.toLowerCase());
+                const matchGroup = state.filters.group === 'all' || med.grupoFarmacologico === state.filters.group;
+                const matchRoute = state.filters.route === 'all' || med.viaAdministracion === state.filters.route;
+                return matchSearch && matchGroup && matchRoute;
+            });
+        }
+
+        function toggleFicha(id) {
+            const content = document.getElementById('content-' + id);
+            const isExpanded = content.classList.contains('open');
+            
+            // Cierra todas las demás fichas abiertas (opcional, para limpieza)
+            document.querySelectorAll('.ficha-content.open').forEach(item => {
+                if (item.id !== content.id) {
+                     item.classList.remove('open');
+                }
+            });
+
+            // Togglea la ficha seleccionada
+            if (isExpanded) {
+                content.classList.remove('open');
+            } else {
+                content.classList.add('open');
+            }
+        }
+        
+        // Exponer la función globalmente para el onclick en HTML
+        window.toggleFicha = toggleFicha;
+
+        function renderList() {
+            const filtered = getFilteredData();
+            const filteredCount = filtered.length;
+            
+            resultsCountEl.textContent = `Mostrando ${filteredCount} resultado${filteredCount !== 1 ? 's' : ''} de 80 totales.`;
+
+            medicationList.innerHTML = '';
+
+            if (filteredCount === 0) {
+                 medicationList.innerHTML = `<div class="p-6 text-center bg-white rounded-xl shadow-md text-gray-500 text-lg font-semibold">❌ No se encontraron resultados para los filtros aplicados.</div>`;
+                 return;
+            }
+
+            filtered.forEach(med => {
+                // 1. Crear el contenedor de la ficha
+                const fichaContainer = document.createElement('div');
+                fichaContainer.className = 'rounded-xl shadow-md';
+                
+                // 2. Crear el encabezado (clickable)
+                const header = document.createElement('div');
+                header.className = 'ficha-header flex justify-between items-center text-lg font-bold';
+                header.setAttribute('onclick', `toggleFicha(${med.id})`);
+                header.innerHTML = `
+                    <span>${med.nombreGenerico} <span class="text-sm font-normal text-blue-200">(${med.nombreComercial})</span></span>
+                    <span class="text-sm font-light">${med.grupoFarmacologico}</span>
+                `;
+                fichaContainer.appendChild(header);
+
+                // 3. Crear el cuerpo de la ficha (el formato completo)
+                const content = document.createElement('div');
+                content.id = 'content-' + med.id;
+                content.className = 'ficha-content';
+                
+                // Generar las filas de la tabla interna (formato completo de ficha)
+                let htmlContent = `<div class="p-4">`;
+                
+                const fields = [
+                    { label: "NOMBRE COMERCIAL", value: med.nombreComercial },
+                    { label: "NOMBRE GENÉRICO", value: med.nombreGenerico },
+                    { label: "MECANISMO DE ACCIÓN", value: med.mecanismoAccion },
+                    { label: "PRESENTACIÓN", value: med.presentacion },
+                    { label: "INDICACIONES", value: `<ul>${med.indicadores.map(i => `<li>${i}</li>`).join('')}</ul>` },
+                    { label: "VÍA DE ADMINISTRACIÓN", value: med.viaAdministracion },
+                    { label: "GRUPO FARMACOLÓGICO", value: med.grupoFarmacologico },
+                    { label: "POSOLOGÍA", value: med.posologia },
+                ];
+
+                fields.forEach(field => {
+                    htmlContent += `
+                        <div class="flex border-b border-gray-200">
+                            <div class="campo-label text-sm uppercase">${field.label}</div>
+                            <div class="campo-valor text-sm">${field.value}</div>
+                        </div>
+                    `;
+                });
+                
+                htmlContent += `</div>`;
+                content.innerHTML = htmlContent;
+                fichaContainer.appendChild(content);
+
+                medicationList.appendChild(fichaContainer);
+            });
+        }
+
+        function clearFilters() {
+            state.filters.search = "";
+            state.filters.group = "all";
+            state.filters.route = "all";
+            
+            // Reset UI elements
+            searchInput.value = "";
+            groupFilter.value = "all";
+            routeFilter.value = "all";
+
+            renderList();
+        }
+
+        // --- INITIALIZATION ---
+        
+        function populateFilters() {
+            const groups = [...new Set(data.map(m => m.grupoFarmacologico))].sort();
+            const routes = [...new Set(data.map(m => m.viaAdministracion))].sort();
+
+            groups.forEach(g => {
+                const option = document.createElement('option');
+                option.value = g;
+                option.textContent = g;
+                groupFilter.appendChild(option);
+            });
+
+            routes.forEach(r => {
+                const option = document.createElement('option');
+                option.value = r;
+                option.textContent = r;
+                routeFilter.appendChild(option);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateFilters();
+            renderList();
+
+            // Event Listeners for Controls
+            searchInput.addEventListener('input', () => {
+                state.filters.search = searchInput.value;
+                renderList();
+            });
+
+            groupFilter.addEventListener('change', () => {
+                state.filters.group = groupFilter.value;
+                renderList();
+            });
+            
+            routeFilter.addEventListener('change', () => {
+                state.filters.route = routeFilter.value;
+                renderList();
+            });
+
+            clearFiltersBtn.addEventListener('click', clearFilters);
+        });
+
+    </script>
+</body>
+</html>
